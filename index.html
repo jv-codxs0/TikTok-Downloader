@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TikTok Downloader</title>
+<style>
+:root{
+  --bg:#0e0f14;--surface:#171922;--surface2:#20232f;--line:#2b2f3d;
+  --text:#f4f5f8;--muted:#9a9fb2;--cyan:#25f4ee;--pink:#fe2c55;--ok:#3ddc97;
+  --r:18px;
+}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--text);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom);display:flex;flex-direction:column;align-items:center}
+body::before{content:"";position:fixed;inset:0;z-index:-1;
+  background:radial-gradient(500px 300px at 85% -5%,rgba(254,44,85,.22),transparent),radial-gradient(500px 300px at 5% 0,rgba(37,244,238,.18),transparent)}
+.wrap{width:100%;max-width:480px;padding:16px;display:flex;flex-direction:column;gap:16px;flex:1}
+
+/* ads */
+.banner{height:56px;border:1px dashed var(--line);border-radius:12px;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;gap:10px;color:var(--muted);font-size:13px;overflow:hidden}
+.banner b{background:#ffd54a;color:#222;border-radius:4px;padding:1px 5px;font-size:11px}
+.banner.bottom{position:sticky;bottom:8px;margin-top:auto;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+
+/* header */
+header{display:flex;align-items:center;gap:12px;padding-top:4px}
+.logo{width:44px;height:44px;border-radius:14px;background:#000;display:grid;place-items:center;
+  box-shadow:-2px -2px 0 var(--cyan),2px 2px 0 var(--pink)}
+.logo svg{width:24px;height:24px;fill:#fff}
+h1{font-size:24px;font-weight:800;letter-spacing:-.4px}
+header p{color:var(--muted);font-size:13px;margin-top:2px}
+
+/* input */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px}
+.field{display:flex;gap:8px;background:var(--surface2);border:1.5px solid var(--line);border-radius:14px;padding:6px 6px 6px 14px;align-items:center;transition:border-color .2s}
+.field:focus-within{border-color:var(--cyan)}
+.field input{flex:1;min-width:0;background:none;border:0;outline:0;color:var(--text);font-size:15px;padding:10px 0}
+.field input::placeholder{color:#6d7285}
+.ghost{background:var(--line);color:var(--text);border:0;border-radius:10px;padding:9px 12px;font-size:13px;font-weight:600;cursor:pointer}
+.btn{width:100%;margin-top:12px;border:0;border-radius:14px;padding:15px;font-size:16px;font-weight:700;color:#fff;cursor:pointer;
+  background:linear-gradient(100deg,var(--pink),#ff5f7e);box-shadow:0 8px 22px rgba(254,44,85,.35);transition:transform .1s,opacity .2s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;box-shadow:none;cursor:not-allowed}
+.err{color:#ff7b92;font-size:13px;margin-top:10px;display:none}
+
+/* preview */
+#result{display:none;flex-direction:column;gap:14px}
+.video{display:flex;gap:12px;align-items:center}
+.video img{width:84px;height:112px;object-fit:cover;border-radius:12px;background:var(--surface2)}
+.video h3{font-size:15px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.video span{color:var(--muted);font-size:13px;display:block;margin-top:6px}
+.formats{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fmt{background:var(--surface2);border:2px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;color:var(--text);text-align:left;transition:border-color .2s,background .2s}
+.fmt strong{display:block;font-size:18px}
+.fmt small{color:var(--muted);font-size:12px}
+.fmt[aria-pressed=true]{border-color:var(--cyan);background:rgba(37,244,238,.08)}
+.fmt svg{width:22px;height:22px;fill:var(--cyan);margin-bottom:8px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(5,6,10,.82);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;z-index:10;padding:16px}
+.modal.open{display:flex}
+.sheet{width:100%;max-width:440px;background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:22px;text-align:center;animation:up .25s ease}
+@keyframes up{from{transform:translateY(30px);opacity:0}}
+.sheet h2{font-size:20px;margin-bottom:6px}
+.sheet p{color:var(--muted);font-size:14px;margin-bottom:16px}
+.adbox{height:170px;border-radius:16px;background:linear-gradient(135deg,#2a1a40,#10303a);display:grid;place-items:center;margin-bottom:16px;position:relative;overflow:hidden}
+.adbox .tag{position:absolute;top:10px;left:10px;background:#ffd54a;color:#222;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:700}
+.adbox .count{position:absolute;top:10px;right:10px;background:rgba(0,0,0,.6);border-radius:20px;padding:3px 10px;font-size:12px}
+.adbox .title{font-size:15px;color:#dfe3f0}
+.skip{background:none;border:0;color:var(--muted);font-size:13px;margin-top:10px;cursor:pointer;text-decoration:underline}
+.bar{height:10px;background:var(--surface2);border-radius:10px;overflow:hidden;margin:6px 0 10px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--pink));transition:width .15s}
+.pct{font-size:34px;font-weight:800}
+.done{width:64px;height:64px;border-radius:50%;background:rgba(61,220,151,.15);display:grid;place-items:center;margin:0 auto 12px}
+.done svg{width:32px;height:32px;fill:none;stroke:var(--ok);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.spin{width:22px;height:22px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:s .7s linear infinite;display:none}
+.btn.loading .spin{display:inline-block}.btn.loading .t{display:none}
+@keyframes s{to{transform:rotate(360deg)}}
+footer{text-align:center;color:#6d7285;font-size:12px;padding:4px 0 8px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- Banner ad (top) -->
+  <div class="banner" id="bannerTop"><b>Ad</b> Banner ad space 320×50</div>
+
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24"><path d="M16.6 2h-3.3v13.2a2.9 2.9 0 1 1-2.9-2.9c.3 0 .6 0 .8.1V9a6.2 6.2 0 1 0 5.4 6.1V8.6a7.5 7.5 0 0 0 4.4 1.4V6.7a4.4 4.4 0 0 1-4.4-4.7z"/></svg></div>
+    <div><h1>TikTok Downloader</h1><p>Save videos as MP4 or audio as MP3</p></div>
+  </header>
+
+  <section class="card">
+    <div class="field">
+      <input id="link" type="url" inputmode="url" placeholder="Paste TikTok link here" autocomplete="off" aria-label="TikTok link">
+      <button class="ghost" id="paste" type="button">Paste</button>
+    </div>
+    <button class="btn" id="go" type="button"><span class="t">Download</span><span class="spin"></span></button>
+    <div class="err" id="err" role="alert"></div>
+  </section>
+
+  <section class="card" id="result">
+    <div class="video">
+      <img id="thumb" alt="Video thumbnail">
+      <div><h3 id="vtitle"></h3><span id="vauthor"></span></div>
+    </div>
+    <div class="formats" role="group" aria-label="Choose format">
+      <button class="fmt" data-f="mp4" aria-pressed="true" type="button">
+        <svg viewBox="0 0 24 24"><path d="M17 10.5V7a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-3.5l4 4v-11z"/></svg>
+        <strong>MP4</strong><small>Video, no watermark</small>
+      </button>
+      <button class="fmt" data-f="mp3" aria-pressed="false" type="button">
+        <svg viewBox="0 0 24 24"><path d="M12 3v10.6a4 4 0 1 0 2 3.4V7h4V3z"/></svg>
+        <strong>MP3</strong><small>Audio only</small>
+      </button>
+    </div>
+    <button class="btn" id="dl" type="button" style="margin-top:0">Download MP4</button>
+  </section>
+
+  <footer>Only download videos you have the right to save.</footer>
+
+  <!-- Banner ad (bottom) -->
+  <div class="banner bottom" id="bannerBottom"><b>Ad</b> Banner ad space 320×50</div>
+</div>
+
+<!-- Ad modal -->
+<div class="modal" id="adModal" role="dialog" aria-modal="true" aria-labelledby="adH">
+  <div class="sheet">
+    <h2 id="adH">Watch a short ad</h2>
+    <p>Watch the ad to start your download. It's free.</p>
+    <div class="adbox"><span class="tag">Ad</span><span class="count" id="count">5s</span><span class="title" id="adTitle">Your video ad plays here</span></div>
+    <button class="btn" id="watch" type="button" style="margin-top:0">Watch ad</button>
+    <button class="skip" id="cancelAd" type="button">Cancel</button>
+  </div>
+</div>
+
+<!-- Downloading modal -->
+<div class="modal" id="dlModal" role="dialog" aria-modal="true" aria-labelledby="dlH">
+  <div class="sheet">
+    <div id="dlBusy">
+      <h2 id="dlH">Downloading…</h2>
+      <p id="dlName">Preparing file</p>
+      <div class="pct" id="pct">0%</div>
+      <div class="bar"><i id="fill"></i></div>
+    </div>
+    <div id="dlDone" style="display:none">
+      <div class="done"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+      <h2>Download complete</h2>
+      <p id="doneMsg">Saved to your device.</p>
+      <button class="btn" id="again" type="button" style="margin-top:0">Download another</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== CONFIG ===== */
+const CONFIG = {
+  // Resolver API: must return JSON like tikwm: { code:0, data:{ play, music, cover, title, author:{nickname} } }
+  // Point this to your own backend to avoid CORS/rate limits.
+  API: "https://www.tikwm.com/api/?hd=1&url=",
+  AD_SECONDS: 5,
+  // AdSense (web only). Leave ADSENSE_CLIENT empty to keep the placeholders.
+  ADSENSE_CLIENT: "",   // e.g. "ca-pub-1234567890123456"
+  SLOT_TOP: "",         // display ad unit ID for the top banner
+  SLOT_BOTTOM: "",      // display ad unit ID for the bottom banner
+  SLOT_MODAL: ""        // display ad unit ID shown in the ad sheet
+};
+/* To use real ads, replace the .banner contents with your ad SDK code
+   (AdSense / AdMob web view) and call showRewardedAd() from your SDK in startAd(). */
+
+const $ = id => document.getElementById(id);
+let info = null, fmt = "mp4";
+
+/* AdSense (web). Skipped inside the Android app, where AdMob is used instead. */
+const useAdSense = () => !window.AdBridge && !!CONFIG.ADSENSE_CLIENT;
+function adTag(slot, style){
+  return `<ins class="adsbygoogle" style="${style}" data-ad-client="${CONFIG.ADSENSE_CLIENT}" data-ad-slot="${slot}"></ins>`;
+}
+function adPush(){ try{ (window.adsbygoogle = window.adsbygoogle || []).push({}) }catch(e){} }
+(function adsInit(){
+  if(!useAdSense()) return;
+  const s = document.createElement("script");
+  s.async = true; s.crossOrigin = "anonymous";
+  s.src = "https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=" + CONFIG.ADSENSE_CLIENT;
+  document.head.appendChild(s);
+  [["bannerTop", CONFIG.SLOT_TOP], ["bannerBottom", CONFIG.SLOT_BOTTOM]].forEach(([id, slot]) => {
+    $(id).innerHTML = adTag(slot, "display:inline-block;width:320px;height:50px");
+    adPush();
+  });
+})();
+
+const isTikTok = u => /^https?:\/\/([a-z0-9-]+\.)?tiktok\.com\/.+/i.test(u.trim());
+function showErr(m){const e=$("err");e.textContent=m;e.style.display=m?"block":"none"}
+
+$("paste").onclick = async () => {
+  try { $("link").value = (await navigator.clipboard.readText()).trim(); showErr("") }
+  catch { showErr("Clipboard blocked. Long-press the field and paste.") }
+};
+
+/* 1. Paste link > Download (fetch info) */
+$("go").onclick = async () => {
+  const url = $("link").value.trim();
+  showErr(""); $("result").style.display = "none";
+  if(!isTikTok(url)) return showErr("That doesn't look like a TikTok link. Copy it from the Share menu and try again.");
+  const b = $("go"); b.classList.add("loading"); b.disabled = true;
+  try{
+    const r = await fetch(CONFIG.API + encodeURIComponent(url));
+    const j = await r.json();
+    if(j.code !== 0 || !j.data) throw new Error(j.msg || "Video not found");
+    info = j.data;
+    $("thumb").src = info.cover || "";
+    $("vtitle").textContent = info.title || "TikTok video";
+    $("vauthor").textContent = "@" + ((info.author && (info.author.unique_id || info.author.nickname)) || "tiktok");
+    $("result").style.display = "flex";
+    $("result").scrollIntoView({behavior:"smooth",block:"nearest"});
+  }catch(e){
+    showErr("Couldn't get this video. Check the link is public, then try again.");
+  }finally{ b.classList.remove("loading"); b.disabled = false }
+};
+$("link").addEventListener("keydown", e => e.key === "Enter" && $("go").click());
+
+/* 2. Choose MP3 / MP4 */
+document.querySelectorAll(".fmt").forEach(b => b.onclick = () => {
+  fmt = b.dataset.f;
+  document.querySelectorAll(".fmt").forEach(x => x.setAttribute("aria-pressed", x === b));
+  $("dl").textContent = "Download " + fmt.toUpperCase();
+});
+
+/* 3. Download chosen > Ad */
+let timer = null;
+$("dl").onclick = () => {
+  $("watch").disabled = false; $("watch").textContent = "Watch ad";
+  $("count").textContent = CONFIG.AD_SECONDS + "s";
+  $("adTitle").textContent = "Your video ad plays here";
+  $("adModal").classList.add("open");
+  if(useAdSense() && !$("modalAd")){
+    $("adTitle").style.display = "none";
+    $("adTitle").parentNode.insertAdjacentHTML("beforeend",
+      adTag(CONFIG.SLOT_MODAL, "display:inline-block;width:300px;height:150px").replace("<ins", '<ins id="modalAd"'));
+    adPush();
+  }
+};
+$("cancelAd").onclick = () => { clearInterval(timer); $("adModal").classList.remove("open") };
+
+/* AdMob bridge: when running inside an Android WebView with AdBridge, native ads are used */
+if(window.AdBridge) document.querySelectorAll(".banner").forEach(b => b.style.display = "none");
+window.onAdRewarded = () => finishAd();
+window.onAdFailed = () => {
+  $("watch").disabled = false; $("watch").textContent = "Watch ad";
+  $("adTitle").textContent = "Ad not available. Try again.";
+};
+$("watch").onclick = () => {
+  if(window.AdBridge){
+    $("watch").disabled = true; $("watch").textContent = "Loading ad…";
+    AdBridge.showRewarded(); return;
+  }
+  let s = CONFIG.AD_SECONDS;
+  $("watch").disabled = true; $("watch").textContent = "Ad playing…";
+  $("adTitle").textContent = "Ad playing…";
+  // Replace with your rewarded-ad SDK; call finishAd() on reward.
+  timer = setInterval(() => {
+    s--; $("count").textContent = s + "s";
+    if(s <= 0){ clearInterval(timer); finishAd() }
+  }, 1000);
+};
+
+/* 4. Ad > Downloading */
+function finishAd(){
+  $("adModal").classList.remove("open");
+  startDownload();
+}
+
+async function startDownload(){
+  const url = fmt === "mp4" ? info.play : info.music;
+  const name = "tiktok-" + Date.now() + "." + fmt;
+  $("dlBusy").style.display = "block"; $("dlDone").style.display = "none";
+  $("dlName").textContent = name; setPct(0);
+  $("dlModal").classList.add("open");
+  if(window.AdBridge && AdBridge.download){
+    AdBridge.download(url, name);
+    setPct(100); $("doneMsg").textContent = "Download started. Check your notifications.";
+    $("dlBusy").style.display = "none"; $("dlDone").style.display = "block";
+    return;
+  }
+  try{
+    const res = await fetch(url);
+    const total = +res.headers.get("content-length") || 0;
+    const reader = res.body.getReader(), chunks = []; let got = 0;
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      chunks.push(value); got += value.length;
+      setPct(total ? Math.round(got / total * 100) : Math.min(95, Math.round(got / 40000)));
+    }
+    const blob = new Blob(chunks, {type: fmt === "mp4" ? "video/mp4" : "audio/mpeg"});
+    save(blob, name);
+    $("doneMsg").textContent = "Saved as " + name;
+  }catch(e){
+    // CORS fallback: open the direct file link
+    const a = document.createElement("a");
+    a.href = url; a.download = name; a.target = "_blank"; a.rel = "noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    $("doneMsg").textContent = "Your download has started.";
+  }
+  setPct(100);
+  $("dlBusy").style.display = "none"; $("dlDone").style.display = "block";
+}
+function save(blob, name){
+  const u = URL.createObjectURL(blob), a = document.createElement("a");
+  a.href = u; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(u), 5000);
+}
+function setPct(p){ $("pct").textContent = p + "%"; $("fill").style.width = p + "%" }
+
+$("again").onclick = () => {
+  $("dlModal").classList.remove("open");
+  $("result").style.display = "none"; $("link").value = ""; info = null;
+  window.scrollTo({top:0,behavior:"smooth"});
+};
+</script>
+</body>
+</html>
