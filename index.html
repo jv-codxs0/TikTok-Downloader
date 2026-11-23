@@ -160,19 +160,36 @@ footer{text-align:center;color:#6d7285;font-size:12px;padding:4px 0 8px}
 const CONFIG = {
   // Resolver API: must return JSON like tikwm: { code:0, data:{ play, music, cover, title, author:{nickname} } }
   // Point this to your own backend to avoid CORS/rate limits.
-  API: "https://www.tikwm.com/api/?hd=1&url=",
+  // Same-origin on Vercel. In the Android app (file://) use your Vercel domain.
+  API: ((location.protocol === "file:" || window.AdBridge) ? "https://xtiktokdownloader.vercel.app" : "") + "/api/resolve?url=",
   AD_SECONDS: 5,
   // AdSense (web only). Leave ADSENSE_CLIENT empty to keep the placeholders.
   ADSENSE_CLIENT: "",   // e.g. "ca-pub-1234567890123456"
   SLOT_TOP: "",         // display ad unit ID for the top banner
   SLOT_BOTTOM: "",      // display ad unit ID for the bottom banner
-  SLOT_MODAL: ""        // display ad unit ID shown in the ad sheet
+  SLOT_MODAL: "",       // display ad unit ID shown in the ad sheet
+  // Adsterra (web only), zone: xtiktokdownloader.vercel.app
+  ADSTERRA_POPUNDER:  "https://accountut.com/1/0af1da41c6e7deeaa52d8f92d450f7d4",   // Popunder_1 (32436369)
+  ADSTERRA_SOCIALBAR: "https://bellnewyork.org/14/5f4d6c467012f918478b857e30791033"  // SocialBar_1 (32436364)
 };
 /* To use real ads, replace the .banner contents with your ad SDK code
    (AdSense / AdMob web view) and call showRewardedAd() from your SDK in startAd(). */
 
 const $ = id => document.getElementById(id);
 let info = null, fmt = "mp4";
+
+/* Adsterra: loaded on the web only (the Android app uses AdMob) */
+(function adsterraInit(){
+  if(window.AdBridge) return;
+  [CONFIG.ADSTERRA_SOCIALBAR, CONFIG.ADSTERRA_POPUNDER].forEach(src => {
+    if(!src) return;
+    const sc = document.createElement("script");
+    sc.src = src; sc.async = true; sc.setAttribute("data-cfasync", "false");
+    document.body.appendChild(sc);
+  });
+  // No AdSense yet: hide the empty banner placeholders
+  if(!CONFIG.ADSENSE_CLIENT) document.querySelectorAll(".banner").forEach(b => b.style.display = "none");
+})();
 
 /* AdSense (web). Skipped inside the Android app, where AdMob is used instead. */
 const useAdSense = () => !window.AdBridge && !!CONFIG.ADSENSE_CLIENT;
@@ -234,7 +251,7 @@ let timer = null;
 $("dl").onclick = () => {
   $("watch").disabled = false; $("watch").textContent = "Watch ad";
   $("count").textContent = CONFIG.AD_SECONDS + "s";
-  $("adTitle").textContent = "Your video ad plays here";
+  $("adTitle").textContent = (!window.AdBridge && !CONFIG.ADSENSE_CLIENT) ? "Thanks for supporting this free tool" : "Your video ad plays here";
   $("adModal").classList.add("open");
   if(useAdSense() && !$("modalAd")){
     $("adTitle").style.display = "none";
@@ -274,8 +291,10 @@ function finishAd(){
 }
 
 async function startDownload(){
-  const url = fmt === "mp4" ? info.play : info.music;
+  let raw = fmt === "mp4" ? info.play : info.music;
+  if(raw.startsWith("/")) raw = "https://www.tikwm.com" + raw;
   const name = "tiktok-" + Date.now() + "." + fmt;
+  const url = window.AdBridge ? raw : "/api/download?u=" + encodeURIComponent(raw) + "&n=" + encodeURIComponent(name);
   $("dlBusy").style.display = "block"; $("dlDone").style.display = "none";
   $("dlName").textContent = name; setPct(0);
   $("dlModal").classList.add("open");
